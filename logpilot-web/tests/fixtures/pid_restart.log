@@ -1,0 +1,10 @@
+M000001  05-20 10:00:00.000  1000  1000 I ActivityManager: Start proc 2100:com.example.app/u0a56 for activity com.example.app/.MainActivity
+M000002  05-20 10:00:00.500  2100  2100 I com.example.app: onCreate
+M000003  05-20 10:00:01.000  2100  2100 D com.example.app: doing work
+M000004  05-20 10:00:02.500  2100  2100 E com.example.app: caught exception
+M000005  05-20 10:00:03.000  1000  1000 I ActivityManager: Process com.example.app (pid 2100) has died
+M000006  05-20 10:00:05.000  1000  1000 I ActivityManager: Start proc 3300:com.example.app/u0a56 for activity com.example.app/.MainActivity
+M000007  05-20 10:00:05.300  3300  3300 I com.example.app: onCreate
+M000008  05-20 10:00:06.000  3300  3300 D com.example.app: restored state
+M000009  05-20 10:00:08.000  3300  3350 W com.example.app: heap pressure
+M000010  05-20 10:00:10.000  1000  1000 I ActivityManager: Process com.example.app (pid 3300) has died

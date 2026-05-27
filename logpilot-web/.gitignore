@@ -7,6 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Test fixtures are intentionally tracked even if they end in .log
+!tests/fixtures/*.log
+
 node_modules
 dist
 dist-ssr

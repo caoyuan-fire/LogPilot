@@ -47,8 +47,15 @@ export interface TagStatistic {
   last_seen: string;
 }
 
+export interface TagAnalysisResult {
+  statistics: TagStatistic[];
+  /** Tags flagged as anomaly-dense (many errors / very high frequency) */
+  anomalous_tags: string[];
+}
+
 export interface TimelineEvent {
   timestamp: string;
+  /** "<pkg>:<pid>" for target events; "system:<originating-tag-or-pid>" for system events */
   source: string;
   pid?: string;
   level: string;
@@ -56,6 +63,8 @@ export interface TimelineEvent {
   message: string;
   line_no: number;
   is_system_event: boolean;
+  /** When >1, this event represents a folded run of N identical adjacent events; line_no is the first sample */
+  compressed_count?: number;
 }
 
 export interface TriageReportInput {

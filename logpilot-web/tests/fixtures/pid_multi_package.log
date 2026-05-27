@@ -1,0 +1,10 @@
+M000001  05-20 10:00:00.000  1000  1000 I ActivityManager: Start proc 2100:com.example.app/u0a56 for activity com.example.app/.MainActivity
+M000002  05-20 10:00:00.500  2100  2100 I com.example.app: onCreate
+M000003  05-20 10:00:01.000  1000  1000 I ActivityManager: Start proc 3500:com.example.helper/u0a57 for service com.example.helper/.HelperService
+M000004  05-20 10:00:01.200  3500  3500 I com.example.helper: onCreate
+M000005  05-20 10:00:02.000  2100  2100 D com.example.app: action a
+M000006  05-20 10:00:02.500  3500  3500 D com.example.helper: action b
+M000007  05-20 10:00:03.500  2100  2100 W com.example.app: warn
+M000008  05-20 10:00:04.500  3500  3500 E com.example.helper: helper failed
+M000009  05-20 10:00:05.000  1000  1000 I ActivityManager: Process com.example.app (pid 2100) has died
+M000010  05-20 10:00:06.000  1000  1000 I ActivityManager: Process com.example.helper (pid 3500) has died

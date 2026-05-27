@@ -1,0 +1,15 @@
+M081600  05-20 18:44:46.791  1048  1328 E GnssCallbckJni: gnssNmeaCb: NMEA:$GPGSV
+M081601  05-20 18:44:46.812  1048  1328 I GnssCallbckJni: gnssLocationCb
+M081602  05-20 18:44:46.901  1048  1328 D GnssCallbckJni: parse done
+this is an unparseable line
+M081603  05-20 18:44:47.001   594 24488 E TboxTest: handleSomeipCallback
+S081604  05-20 18:44:47.028   594 24488 W TboxTest: retry
+M081605  05-20 18:44:47.082  2465 27477 W adbd    : timed out while waiting
+another bogus line without timestamp
+M081606  05-20 18:44:47.300  2100  2100 I ActivityManager: Start proc 2100:com.example.app/u0a56 for activity
+M081607  05-20 18:44:47.350  2100  2100 V com.example.app: onCreate
+M081608  05-20 18:44:47.400  2100  2100 D com.example.app: onResume
+M081609  05-20 18:44:47.500  2100  2100 I com.example.app: doing work
+M081610  05-20 18:44:47.600  2100  2100 W com.example.app: slow IO
+M081611  05-20 18:44:47.700  2100  2100 E com.example.app: failed step
+M081612  05-20 18:44:47.800  2100  2100 F com.example.app: fatal

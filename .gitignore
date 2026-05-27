@@ -1,6 +1,9 @@
 # 样例日志（含真实/敏感数据，不入库）
 input-data-sample/
 
+# 临时抓取/模拟日志（含真实设备数据，不入库）
+*.log
+
 # 根目录 node_modules（若有）
 node_modules/
 

@@ -1,0 +1,6 @@
+# PPT 构建依赖与中间产物
+node_modules/
+
+# 渲染中间产物（可从 .pptx 重新生成）
+slides/
+*.pdf

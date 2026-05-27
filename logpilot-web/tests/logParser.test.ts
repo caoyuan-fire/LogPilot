@@ -63,6 +63,38 @@ describe('parseLogLine', () => {
     const result = parseLogLine('', 1);
     expect(result).toBeNull();
   });
+
+  // ─── adb logcat -v threadtime (no hex prefix) ───────────────────────────────
+  it('parses a standard adb logcat -v threadtime line without hex prefix', () => {
+    const line = '01-01 00:00:05.801   321   321 I lowmemorykiller: unisoc update props done';
+    const result = parseLogLine(line, 1);
+
+    expect(result).not.toBeNull();
+    const event = result as LogEvent;
+    expect(event.timestamp).toBe('01-01 00:00:05.801');
+    expect(event.pid).toBe('321');
+    expect(event.tid).toBe('321');
+    expect(event.level).toBe('I');
+    expect(event.tag).toBe('lowmemorykiller');
+    expect(event.message).toBe('unisoc update props done');
+  });
+
+  it('parses adb logcat E-level line with multi-word tag', () => {
+    const line = '05-27 16:55:10.123  1234  5678 E ActivityManager: ANR in com.example.foo (pid 9999)';
+    const result = parseLogLine(line, 7);
+
+    expect(result).not.toBeNull();
+    const event = result as LogEvent;
+    expect(event.pid).toBe('1234');
+    expect(event.tag).toBe('ActivityManager');
+    expect(event.level).toBe('E');
+    expect(event.message).toBe('ANR in com.example.foo (pid 9999)');
+  });
+
+  it('does NOT misparse the logcat banner line', () => {
+    const result = parseLogLine('--------- beginning of main', 1);
+    expect(result).toBeNull();
+  });
 });
 
 describe('parseLogFile', () => {

@@ -1,0 +1,24 @@
+M000001  05-20 10:00:00.000  1000  1000 I ActivityManager: Start proc 2100:com.example.app/u0a56 for activity com.example.app/.MainActivity
+M000002  05-20 10:00:00.100  1000  1000 I ActivityManager: Start proc 3500:com.example.helper/u0a57 for service com.example.helper/.HelperService
+M000003  05-20 10:00:00.500  2100  2100 I com.example.app: onCreate
+M000004  05-20 10:00:00.700  3500  3500 I com.example.helper: onCreate
+M000005  05-20 10:00:01.000  2100  2100 D AppCore: tick
+M000006  05-20 10:00:01.100  2100  2100 D AppCore: tick
+M000007  05-20 10:00:01.200  2100  2100 D AppCore: tick
+M000008  05-20 10:00:01.300  2100  2100 D AppCore: tick
+M000009  05-20 10:00:01.400  2100  2100 D AppCore: tick
+M000010  05-20 10:00:02.000  2100  2150 W AppCore: slow IO on path /data/app
+M000011  05-20 10:00:02.500  3500  3500 D HelperCore: doing helper work
+M000012  05-20 10:00:03.000  2100  2100 E AppCore: failed step 1
+M000013  05-20 10:00:03.500  2100  2100 E AppCore: failed step 2
+M000014  05-20 10:00:04.000  2100  2100 E AppCore: failed step 3
+M000015  05-20 10:00:04.200  3500  3500 W HelperCore: backoff
+M000016  05-20 10:00:04.500  2100  2100 E AppCore: failed step 4
+M000017  05-20 10:00:04.800  2100  2100 E AppCore: failed step 5
+M000018  05-20 10:00:05.000   500   500 E Watchdog: !@Sync 1000 ms: AppCore
+M000019  05-20 10:00:05.200  1000  1000 E ActivityManager: ANR in com.example.app (pid 2100)
+M000020  05-20 10:00:05.500  1000  1000 I ActivityManager: Killing 3500:com.example.helper/u0a57 (adj 900): empty for too long
+M000021  05-20 10:00:05.800   600   600 W lowmemorykiller: Killing 'com.example.helper' (3500), adj 900
+M000022  05-20 10:00:06.000   500   500 E AndroidRuntime: FATAL EXCEPTION in unrelated process
+M000023  05-20 10:00:06.500   700   700 W InputDispatcher: Input dispatching timed out (Waiting to send key event)
+M000024  05-20 10:00:07.000  1000  1000 I ActivityManager: Process com.example.app (pid 2100) has died

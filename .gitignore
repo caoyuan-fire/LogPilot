@@ -1,0 +1,21 @@
+# 样例日志（含真实/敏感数据，不入库）
+input-data-sample/
+
+# 根目录 node_modules（若有）
+node_modules/
+
+# 环境变量（含 API key，绝不入库）
+.env.local
+.env.*.local
+
+# 构建产物
+dist/
+build/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

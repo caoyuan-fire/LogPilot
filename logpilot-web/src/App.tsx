@@ -92,6 +92,16 @@ function App() {
   const [hmLoaded, setHmLoaded] = useState<HmEventDetail | null>(null)
   const [hmLoadError, setHmLoadError] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 在飞请求的取消句柄 —— 防止用户清除 / 重新分析时，旧请求迟到的响应"复活"已清空的状态
+  const analyzeAbortRef = useRef<AbortController | null>(null)
+  const triageAbortRef = useRef<AbortController | null>(null)
+
+  const cancelInflight = () => {
+    analyzeAbortRef.current?.abort()
+    analyzeAbortRef.current = null
+    triageAbortRef.current?.abort()
+    triageAbortRef.current = null
+  }
 
   const checkHealth = useCallback(async (opts?: { silent?: boolean }) => {
     // 手动触发（点击状态指示器）时给出"检查中"过渡态；轮询时静默更新避免闪烁
@@ -146,6 +156,11 @@ function App() {
   }
 
   const runAnalyze = async () => {
+    // 取消上一次还在飞的 analyze（如果用户连点）
+    analyzeAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    analyzeAbortRef.current = ctrl
+
     setError('')
     setResult(null)
     setTriage(null)
@@ -174,23 +189,41 @@ function App() {
           packages,
           time_window: timeWindow.trim() || undefined,
         }),
+        signal: ctrl.signal,
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(err.error || `请求失败 (${res.status})`)
       }
       const data: AnalyzeResponse = await res.json()
+      // 二次确认 —— 即便 fetch 未中止，但本次响应已被超越（如用户清除后再来一次），仍要抛弃
+      if (ctrl.signal.aborted) return
       setResult(data)
     } catch (err) {
+      // AbortError —— 用户主动取消（清除 / 重新分析），不作错误提示
+      if ((err as Error)?.name === 'AbortError') return
       setError(err instanceof Error ? err.message : '未知错误')
     } finally {
-      setLoading(false)
+      if (analyzeAbortRef.current === ctrl) {
+        setLoading(false)
+        analyzeAbortRef.current = null
+      }
     }
   }
 
   const runTriage = async () => {
+    // 取消上一次还在飞的 triage（用户连点"重新生成"时常见）
+    triageAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    triageAbortRef.current = ctrl
+
     setTriageError('')
     setTriage(null)
+    // 硬守门：必须先有日志、包名、且已跑过 /api/analyze（result 非空）
+    if (!result) {
+      setTriageError('请先点击"开始分析"完成日志分析')
+      return
+    }
     if (!logContent.trim()) {
       setTriageError('请先上传日志并完成分析')
       return
@@ -215,21 +248,31 @@ function App() {
           time_window: timeWindow.trim() || undefined,
           bug_summary: bugSummary.trim() || undefined,
         }),
+        signal: ctrl.signal,
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(err.error || `请求失败 (${res.status})`)
       }
       const data: TriageResponse = await res.json()
+      if (ctrl.signal.aborted) return
       setTriage(data)
     } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
       setTriageError(err instanceof Error ? err.message : '未知错误')
     } finally {
-      setTriageLoading(false)
+      if (triageAbortRef.current === ctrl) {
+        setTriageLoading(false)
+        triageAbortRef.current = null
+      }
     }
   }
 
   const loadHmSample = async (id: string) => {
+    // 切样例前掐掉旧的 analyze / triage 在飞请求，避免响应迟到污染新样例的状态
+    cancelInflight()
+    setLoading(false)
+    setTriageLoading(false)
     setHmLoadError('')
     try {
       const res = await fetch(`${baseUrl}/api/demo/load-hm-event`, {
@@ -437,6 +480,8 @@ function App() {
                   className="btn btn-link"
                   onClick={(e) => {
                     e.stopPropagation()
+                    // 先 abort 在飞请求 —— 防止迟到的响应"复活"已清空的状态
+                    cancelInflight()
                     setLogContent('')
                     setFileName('')
                     // 清除分析输入：时间窗口 + 包名 + bug 描述
@@ -448,6 +493,9 @@ function App() {
                     setError('')
                     setTriage(null)
                     setTriageError('')
+                    // 同时关掉 loading（avoid 转圈卡住）
+                    setLoading(false)
+                    setTriageLoading(false)
                     // 清除 HM Demo 状态（不清 hmEvents 列表）
                     setHmLoaded(null)
                     setHmLoadError('')

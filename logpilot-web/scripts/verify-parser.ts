@@ -1,9 +1,29 @@
-import { readFileSync } from 'node:fs';
-import { parseLogFile } from '../src/server/pipeline/logParser.ts';
-import { filterByTimeWindow, parseTimeInput } from '../src/server/pipeline/timeWindow.ts';
+/**
+ * 简单 CLI：跑一遍 logParser + 可选的时间窗口过滤，输出统计与样例。
+ *
+ * 不传参时默认拿 tests/fixtures/basic_logcat.log（仓库自带）跑一遍，
+ * 任何机器 clone 下来都能直接 `npx tsx scripts/verify-parser.ts` 立即看到效果。
+ *
+ * 用法：
+ *   npx tsx scripts/verify-parser.ts                     # 默认 fixture
+ *   npx tsx scripts/verify-parser.ts path/to/your.log    # 自定义日志
+ *   npx tsx scripts/verify-parser.ts path/to/your.log "18:45:00~18:46:00"
+ */
 
-const logPath = process.argv[2] || '../input-data-sample/055-0520_184446/0-android.log';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseLogFile } from '../src/server/pipeline/logParser.js';
+import { filterByTimeWindow, parseTimeInput } from '../src/server/pipeline/timeWindow.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_FIXTURE = path.resolve(__dirname, '../tests/fixtures/basic_logcat.log');
+
+const logPath = process.argv[2] || DEFAULT_FIXTURE;
 const timeInput = process.argv[3]; // e.g. "18:45:00~18:46:00" or "18:45:30"
+
+console.log('日志文件:', logPath);
+console.log('');
 
 const content = readFileSync(logPath, 'utf-8');
 const result = parseLogFile(content);
@@ -40,8 +60,7 @@ if (timeInput) {
   }
 } else {
   console.log('');
-  console.log('用法: npx tsx scripts/verify-parser.ts [日志路径] [时间窗口]');
-  console.log('时间窗口格式:');
-  console.log('  范围: "18:45:00~18:46:00"');
-  console.log('  时间点: "18:45:30" (自动扩展前后5分钟)');
+  console.log('提示: 想跑时间窗口过滤可加第二个参数:');
+  console.log('  npx tsx scripts/verify-parser.ts <log路径> "18:45:00~18:46:00"');
+  console.log('  npx tsx scripts/verify-parser.ts <log路径> "18:45:30"   # 单点扩前后5分钟');
 }

@@ -20,6 +20,51 @@ interface AnalyzeResponse {
   }
 }
 
+interface TriageReportResult {
+  provider: string
+  model: string
+  report_markdown: string
+  facts: string[]
+  hypotheses: string[]
+  missing_information: string[]
+  jira_comment_markdown: string
+}
+
+interface TriageResponse {
+  report: TriageReportResult
+  triage_input_summary: {
+    bug_summary: string
+    packages: string[]
+    time_window: string
+    pid_lifecycles_count: number
+    tag_statistics_count: number
+    timeline_count: number
+    key_log_evidence_count: number
+  }
+}
+
+interface HmEventSummary {
+  hm_event_id: string
+  title: string
+  severity: string
+  jira_key: string
+  packages: string[]
+}
+
+interface HmEventDetail {
+  hm_event_id: string
+  title: string
+  severity: string
+  captured_at: string
+  device: { model: string; android_version: string; build: string }
+  jira: { key: string; url: string; status: string; created_at: string }
+  log_path: string
+  time_window: string
+  packages: string[]
+  bug_summary: string
+  hm_signals: string[]
+}
+
 type HealthState =
   | { kind: 'checking' }
   | { kind: 'ok'; provider: string; timestamp: string }
@@ -34,10 +79,18 @@ function App() {
   const [fileName, setFileName] = useState<string>('')
   const [timeWindow, setTimeWindow] = useState<string>('')
   const [packagesText, setPackagesText] = useState<string>('')
+  const [bugSummary, setBugSummary] = useState<string>('')
   const [result, setResult] = useState<AnalyzeResponse | null>(null)
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [dragOver, setDragOver] = useState<boolean>(false)
+  const [triage, setTriage] = useState<TriageResponse | null>(null)
+  const [triageError, setTriageError] = useState<string>('')
+  const [triageLoading, setTriageLoading] = useState<boolean>(false)
+  const [copyHint, setCopyHint] = useState<string>('')
+  const [hmEvents, setHmEvents] = useState<HmEventSummary[]>([])
+  const [hmLoaded, setHmLoaded] = useState<HmEventDetail | null>(null)
+  const [hmLoadError, setHmLoadError] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const checkHealth = useCallback(async (opts?: { silent?: boolean }) => {
@@ -62,6 +115,16 @@ function App() {
 
   const isOnline = health.kind === 'ok'
 
+  // 在线时拉一次 HM 样例列表（用于 Demo 卡片下拉）
+  useEffect(() => {
+    if (!isOnline) return
+    if (hmEvents.length > 0) return
+    fetch(`${baseUrl}/api/demo/hm-events`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d: { events: HmEventSummary[] }) => setHmEvents(d.events))
+      .catch(() => {/* 静默 — Demo 卡片会显示"未取到样例" */})
+  }, [isOnline, hmEvents.length])
+
   const acceptFile = async (file: File) => {
     setFileName(file.name)
     const text = await file.text()
@@ -85,6 +148,8 @@ function App() {
   const runAnalyze = async () => {
     setError('')
     setResult(null)
+    setTriage(null)
+    setTriageError('')
 
     if (!logContent.trim()) {
       setError('请先上传或粘贴日志')
@@ -120,6 +185,89 @@ function App() {
       setError(err instanceof Error ? err.message : '未知错误')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const runTriage = async () => {
+    setTriageError('')
+    setTriage(null)
+    if (!logContent.trim()) {
+      setTriageError('请先上传日志并完成分析')
+      return
+    }
+    const packages = packagesText
+      .split(/[\s,，;；\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (packages.length === 0) {
+      setTriageError('请填写至少一个包名')
+      return
+    }
+
+    setTriageLoading(true)
+    try {
+      const res = await fetch(`${baseUrl}/api/triage-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          log_content: logContent,
+          packages,
+          time_window: timeWindow.trim() || undefined,
+          bug_summary: bugSummary.trim() || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(err.error || `请求失败 (${res.status})`)
+      }
+      const data: TriageResponse = await res.json()
+      setTriage(data)
+    } catch (err) {
+      setTriageError(err instanceof Error ? err.message : '未知错误')
+    } finally {
+      setTriageLoading(false)
+    }
+  }
+
+  const loadHmSample = async (id: string) => {
+    setHmLoadError('')
+    try {
+      const res = await fetch(`${baseUrl}/api/demo/load-hm-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(err.error || `请求失败 (${res.status})`)
+      }
+      const data: { event: HmEventDetail; log_content: string } = await res.json()
+      // 自动填表
+      setLogContent(data.log_content)
+      setFileName(data.event.log_path)
+      setTimeWindow(data.event.time_window)
+      setPackagesText(data.event.packages.join(', '))
+      setBugSummary(data.event.bug_summary)
+      setHmLoaded(data.event)
+      // 清掉之前的分析结果（新样例换上来旧报告就过时了）
+      setResult(null)
+      setError('')
+      setTriage(null)
+      setTriageError('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } catch (err) {
+      setHmLoadError(err instanceof Error ? err.message : '未知错误')
+    }
+  }
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyHint(`${label} 已复制`)
+      setTimeout(() => setCopyHint(''), 1800)
+    } catch {
+      setCopyHint('复制失败 — 请手动选中文本')
+      setTimeout(() => setCopyHint(''), 2400)
     }
   }
 
@@ -172,6 +320,80 @@ function App() {
           </div>
         )}
 
+        {/* ── HM/Jira 闭环 Demo 卡 ────────────────────────────────── */}
+        <section className="card demo-card">
+          <div className="card-head">
+            <h2>
+              <span className="demo-badge">DEMO</span> HM / Jira 闭环
+            </h2>
+            <span className="card-sub">
+              选一个合成 HM 事件 → 自动填日志 / 时间窗口 / 包名 / Bug 描述 → 一键直达分析与 AI 报告
+            </span>
+          </div>
+
+          <div className="alert alert-demo">
+            <strong>⚠ 模拟闭环，未接入生产系统。</strong>
+            <span className="dim">
+              所有 HM 事件 / Jira 单号 / 设备信息均为合成数据。真实接入需单独走授权与脱敏流程，见
+              <code>demo/jira_comment_sample.md</code>。
+            </span>
+          </div>
+
+          {hmEvents.length === 0 && isOnline && (
+            <p className="hint">正在加载 HM 样例...</p>
+          )}
+          {hmEvents.length === 0 && !isOnline && (
+            <p className="hint">等待后端连接后将自动加载 HM 样例。</p>
+          )}
+
+          {hmEvents.length > 0 && (
+            <div className="hm-grid">
+              {hmEvents.map((e) => {
+                const active = hmLoaded?.hm_event_id === e.hm_event_id
+                return (
+                  <button
+                    key={e.hm_event_id}
+                    className={`hm-event ${active ? 'is-active' : ''} sev-${e.severity}`}
+                    onClick={() => loadHmSample(e.hm_event_id)}
+                    disabled={!isOnline}
+                  >
+                    <div className="hm-event-head">
+                      <code className="hm-id">{e.hm_event_id}</code>
+                      <span className={`hm-sev sev-${e.severity}`}>{e.severity}</span>
+                    </div>
+                    <div className="hm-title">{e.title}</div>
+                    <div className="hm-meta">
+                      <span>Jira: <code>{e.jira_key}</code></span>
+                      <span>包名 {e.packages.length}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {hmLoaded && (
+            <div className="hm-loaded">
+              <strong>✓ 已载入 {hmLoaded.hm_event_id}</strong>
+              <span className="dim">
+                {' · '}Jira <code>{hmLoaded.jira.key}</code> · 设备 {hmLoaded.device.model} · 触发时间 {hmLoaded.captured_at}
+              </span>
+              <details className="hm-signals">
+                <summary>HM 抓到的信号 ({hmLoaded.hm_signals.length})</summary>
+                <ul>
+                  {hmLoaded.hm_signals.map((s, i) => <li key={i}><code>{s}</code></li>)}
+                </ul>
+              </details>
+            </div>
+          )}
+
+          {hmLoadError && (
+            <div className="alert alert-warn">
+              <strong>载入失败：</strong>{hmLoadError}
+            </div>
+          )}
+        </section>
+
         {/* ── 输入卡 ───────────────────────────────────────────────── */}
         <section className={`card ${!isOnline ? 'is-disabled' : ''}`}>
           <fieldset disabled={!isOnline} className="fieldset-bare">
@@ -217,12 +439,18 @@ function App() {
                     e.stopPropagation()
                     setLogContent('')
                     setFileName('')
-                    // 清除分析输入：时间窗口 + 包名
+                    // 清除分析输入：时间窗口 + 包名 + bug 描述
                     setTimeWindow('')
                     setPackagesText('')
-                    // 清除分析结果，避免旧结果留在页面上造成误导
+                    setBugSummary('')
+                    // 清除分析结果与 AI 报告，避免旧结果留在页面上造成误导
                     setResult(null)
                     setError('')
+                    setTriage(null)
+                    setTriageError('')
+                    // 清除 HM Demo 状态（不清 hmEvents 列表）
+                    setHmLoaded(null)
+                    setHmLoadError('')
                     // 同步清空 <input>，防止"选同一个文件"时 onChange 不触发
                     if (fileInputRef.current) fileInputRef.current.value = ''
                   }}
@@ -274,6 +502,16 @@ function App() {
               />
             </label>
           </div>
+
+          <label className="field field-full">
+            <span className="field-label">问题描述 / Bug 现象（可选，给 AI 用）</span>
+            <input
+              type="text"
+              placeholder="例如：点击导出按钮后 App 卡死约 5 秒，恢复后看不到导出结果"
+              value={bugSummary}
+              onChange={(e) => setBugSummary(e.target.value)}
+            />
+          </label>
 
           <div className="actions">
             <button className="btn btn-primary" onClick={runAnalyze} disabled={loading || !isOnline}>
@@ -468,10 +706,128 @@ function App() {
               )}
             </section>
 
+            {/* AI 分诊报告 */}
+            <section className="card">
+              <div className="card-head">
+                <h2>5. AI 分诊报告</h2>
+                <span className="card-sub">
+                  基于上面的结构化证据生成；当前 provider：<code>{health.kind === 'ok' ? health.provider : '?'}</code>
+                </span>
+              </div>
+
+              {!triage && !triageLoading && (
+                <div className="ai-cta">
+                  <p className="hint">
+                    点击下方按钮，把 PID 生命周期 / Tag 统计 / 时间线 / 关键证据打包给 AI，
+                    生成区分"事实 / 推测 / 待补充"的 Markdown 报告 + Jira 评论版。
+                    {' '}<strong>不下根因结论</strong>，每条推测必须引用 <code>line_no</code>。
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={runTriage}
+                    disabled={!isOnline}
+                  >
+                    生成 AI 报告
+                  </button>
+                </div>
+              )}
+
+              {triageLoading && (
+                <div className="ai-loading">
+                  <span className="spinner" />
+                  正在生成 AI 报告... 真实模型可能需要几秒到几十秒。
+                </div>
+              )}
+
+              {triageError && (
+                <div className="alert alert-warn">
+                  <strong>生成失败：</strong>{triageError}
+                </div>
+              )}
+
+              {triage && (
+                <div className="ai-report">
+                  <div className="ai-meta">
+                    <span className="badge badge-provider">
+                      provider: {triage.report.provider} · {triage.report.model}
+                    </span>
+                    <span className="hint">
+                      送给模型的字段：
+                      PID 段 {triage.triage_input_summary.pid_lifecycles_count} ·
+                      Tag {triage.triage_input_summary.tag_statistics_count} ·
+                      时间线 {triage.triage_input_summary.timeline_count} ·
+                      关键证据 {triage.triage_input_summary.key_log_evidence_count}
+                    </span>
+                  </div>
+
+                  <div className="ai-grid">
+                    <div className="ai-col">
+                      <h3 className="ai-section-head">分诊报告（Markdown）</h3>
+                      <pre className="ai-markdown">{triage.report.report_markdown}</pre>
+                      <div className="ai-actions">
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => copyToClipboard(triage.report.report_markdown, '完整报告')}
+                        >
+                          复制完整报告
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="ai-col">
+                      <h3 className="ai-section-head">Jira 评论版</h3>
+                      <pre className="ai-markdown">{triage.report.jira_comment_markdown}</pre>
+                      <div className="ai-actions">
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => copyToClipboard(triage.report.jira_comment_markdown, 'Jira 评论')}
+                        >
+                          复制 Jira 评论
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ai-structured">
+                    <div className="ai-bucket">
+                      <h4>事实 (facts) · {triage.report.facts.length}</h4>
+                      <ul>
+                        {triage.report.facts.map((f, i) => <li key={i}>{f}</li>)}
+                      </ul>
+                    </div>
+                    <div className="ai-bucket">
+                      <h4>推测 (hypotheses) · {triage.report.hypotheses.length}</h4>
+                      {triage.report.hypotheses.length > 0 ? (
+                        <ul>
+                          {triage.report.hypotheses.map((h, i) => <li key={i}>{h}</li>)}
+                        </ul>
+                      ) : (
+                        <p className="dim">证据不足，未生成推测</p>
+                      )}
+                    </div>
+                    <div className="ai-bucket">
+                      <h4>待补充 (missing_info) · {triage.report.missing_information.length}</h4>
+                      <ul>
+                        {triage.report.missing_information.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="ai-footer-actions">
+                    <button className="btn btn-link" onClick={runTriage}>
+                      重新生成
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {copyHint && <div className="copy-toast">{copyHint}</div>}
+            </section>
+
             {/* 解析摘要 */}
             <details className="card collapsible">
               <summary>
-                <h2>5. 解析摘要</h2>
+                <h2>6. 解析摘要</h2>
                 <span className="card-sub">展开查看时间窗口与统计</span>
               </summary>
               <pre className="json-block">{JSON.stringify(result.parse_summary, null, 2)}</pre>

@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import type { AiProvider, TriageReportInput, TriageReportResult } from '../../shared/types.js';
 
 export interface DeepSeekConfig {
@@ -5,6 +8,25 @@ export interface DeepSeekConfig {
   baseUrl: string;
   model: string;
   timeoutMs: number;
+}
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// prompts/ 与 src/server/ai/ 平级（项目根 → prompts）
+const PROMPT_PATH = path.resolve(__dirname, '../../../prompts/triage_report_prompt.md');
+
+let cachedSystemPrompt: string | null = null;
+function loadSystemPrompt(): string {
+  if (cachedSystemPrompt !== null) return cachedSystemPrompt;
+  try {
+    cachedSystemPrompt = readFileSync(PROMPT_PATH, 'utf-8');
+  } catch {
+    // Defensive fallback：找不到 prompt 文件时，给个最小版本，保证不崩
+    cachedSystemPrompt =
+      '你是 LogPilot 缺陷分诊助手。基于输入的结构化证据生成 JSON 报告。' +
+      '每条推测必须引用 line_no；证据不足时把内容降级到 missing_information。' +
+      '输出字段：report_markdown / facts / hypotheses / missing_information / jira_comment_markdown。';
+  }
+  return cachedSystemPrompt;
 }
 
 export class DeepSeekProvider implements AiProvider {
@@ -84,21 +106,6 @@ export class DeepSeekProvider implements AiProvider {
   }
 
   private buildSystemPrompt(): string {
-    return `你是 LogPilot 缺陷分诊助手。你将收到一份结构化的日志分析证据摘要，包含 PID 生命周期、动态 Tag 统计、关键事件时间线和关键日志证据。
-
-请基于这些证据生成分诊报告，严格遵守以下规则：
-
-1. 只根据输入证据分析，不编造信息。
-2. 明确区分"事实（facts）"、"推测（hypotheses）"和"待补充信息（missing_information）"。
-3. 每个推测必须引用具体的 evidence（通过 line_no 或时间戳）。
-4. 信息不足时输出缺口清单，不生成强结论。
-5. 输出一份可直接复制到 Jira 评论的摘要版。
-
-请以 JSON 格式输出，包含以下字段：
-- report_markdown: 完整的 Markdown 分诊报告
-- facts: 事实数组
-- hypotheses: 推测数组（每条必须引用证据）
-- missing_information: 待补充信息数组
-- jira_comment_markdown: Jira 评论版 Markdown 摘要`;
+    return loadSystemPrompt();
   }
 }

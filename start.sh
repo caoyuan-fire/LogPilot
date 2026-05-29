@@ -85,14 +85,18 @@ if ! npm --prefix "$WEB_DIR" exec -- vite --version >/dev/null 2>&1; then
   info "原生依赖修复完成 ✓"
 fi
 
-# ── 4. 清理残留进程（防止端口被上次未退出的 node 占用）─────────────────────
-# 先按进程名杀 tsx / vite（tsx 有内部锁，必须先杀进程再释放端口）
-for _pattern in "tsx watch" "vite"; do
-  pkill -f "$_pattern" 2>/dev/null || true
-done
-sleep 1   # 等进程完全退出
+# ── 4. 清理上次启动的残留进程（只杀自己记录的 PID，不误杀其他项目）──────────
+PID_FILE="$WEB_DIR/.logpilot.pids"
+if [ -f "$PID_FILE" ]; then
+  warn "检测到上次未退出的进程，正在清理..."
+  while IFS= read -r _pid; do
+    kill -9 "$_pid" 2>/dev/null || true
+  done < "$PID_FILE"
+  rm -f "$PID_FILE"
+  sleep 1
+fi
 
-# 再按端口补扫（兜底）
+# 再按端口补扫（兜底：处理非本脚本启动的残留）
 _lsof=$(command -v lsof || echo /usr/sbin/lsof)
 for port in 5173 5174; do
   _pids=$($_lsof -ti tcp:$port 2>/dev/null || true)
@@ -134,4 +138,14 @@ open_browser() {
 open_browser &
 
 cd "$WEB_DIR"
-npm run dev
+
+# 启动服务并记录 PID 文件，供下次启动时精准清理（不误杀其他项目）
+npm run dev &
+DEV_PID=$!
+echo "$DEV_PID" > "$PID_FILE"
+
+# Ctrl+C 时清理 PID 文件并结束子进程
+trap 'rm -f "$PID_FILE"; kill $DEV_PID 2>/dev/null; exit 0' INT TERM
+
+wait $DEV_PID
+rm -f "$PID_FILE"

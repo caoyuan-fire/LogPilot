@@ -15,6 +15,9 @@ dist
 dist-ssr
 *.local
 
+# 启动脚本 PID 记录文件（本地运行时态，不入库）
+.logpilot.pids
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

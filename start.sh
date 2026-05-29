@@ -75,7 +75,16 @@ if ! npm --prefix "$WEB_DIR" exec -- vite --version >/dev/null 2>&1; then
   info "原生依赖修复完成 ✓"
 fi
 
-# ── 4. 启动 ─────────────────────────────────────────────────────────────────
+# ── 4. 清理残留进程（防止端口被上次未退出的 node 占用）─────────────────────
+for port in 5173 5174; do
+  pid=$(lsof -ti tcp:$port 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    warn "端口 $port 被占用（PID $pid），自动清理..."
+    kill -9 $pid 2>/dev/null || true
+  fi
+done
+
+# ── 5. 启动 ─────────────────────────────────────────────────────────────────
 info "启动 LogPilot..."
 echo ""
 echo "  前端: http://127.0.0.1:5173"

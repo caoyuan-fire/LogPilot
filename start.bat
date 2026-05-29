@@ -82,7 +82,11 @@ if errorlevel 1 (
     echo [OK] 原生依赖修复完成
 )
 
-:: ── 4. 启动 ─────────────────────────────────────────────────────────────────
+:: ── 4. 清理残留进程（防止端口被上次未退出的 node 占用）────────────────────
+powershell -NonInteractive -WindowStyle Hidden -Command ^
+  "5173,5174 | ForEach-Object { Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }" 2>nul
+
+:: ── 5. 启动 ─────────────────────────────────────────────────────────────────
 echo.
 echo  启动 LogPilot...
 echo  前端: http://127.0.0.1:5173

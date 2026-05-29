@@ -655,7 +655,7 @@ function addDarkFooter(slide, pageNo, total) {
     x: 0.5, y: 0.4, w: 12.3, h: 0.7,
     fontSize: 28, bold: true, color: C.white, fontFace: F.head, margin: 0,
   });
-  s.addText('全部 6 个 JOB 已完成，自动化验证 105 项全部通过', {
+  s.addText('全链路功能已完整交付，自动化验证 105 项全部通过', {
     x: 0.5, y: 1.05, w: 12.3, h: 0.4,
     fontSize: 13, color: 'CADCFC', fontFace: F.body, margin: 0,
   });
@@ -689,15 +689,15 @@ function addDarkFooter(slide, pageNo, total) {
     });
   });
 
-  // 交付进度条 — 全部完成
+  // 功能模块交付进度条
   const phases = [
-    { name: 'JOB-000\n环境与骨架', done: true },
-    { name: 'JOB-001\n解析+时间窗口', done: true },
-    { name: 'JOB-002\nPID 生命周期', done: true },
-    { name: 'JOB-003\nTag+时间线', done: true },
-    { name: 'JOB-004\nAI 分诊报告', done: true },
-    { name: 'JOB-005\nHM/Jira 闭环', done: true },
-    { name: 'JOB-006\n终审', done: true },
+    { name: '环境与\n工程骨架', done: true },
+    { name: '日志解析\n时间窗口', done: true },
+    { name: 'PID\n生命周期', done: true },
+    { name: '动态 Tag\n事件时间线', done: true },
+    { name: 'AI\n分诊报告', done: true },
+    { name: 'HM/Jira\n闭环 Demo', done: true },
+    { name: '集成验收\n端到端', done: true },
   ];
   const pw = 12.3 / phases.length;
   phases.forEach((p, i) => {

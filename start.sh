@@ -87,10 +87,24 @@ fi
 
 # ── 4. 清理残留进程（防止端口被上次未退出的 node 占用）─────────────────────
 for port in 5173 5174; do
-  pid=$(lsof -ti tcp:$port 2>/dev/null || true)
-  if [ -n "$pid" ]; then
-    warn "端口 $port 被占用（PID $pid），自动清理..."
-    kill -9 $pid 2>/dev/null || true
+  # 用 node 找占用端口的 PID（跨平台，不依赖 lsof 路径）
+  pid=$(node -e "
+    const net = require('net');
+    const s = net.createServer();
+    s.listen($port, '127.0.0.1', () => { s.close(); process.stdout.write('free'); });
+    s.on('error', () => { process.stdout.write('busy'); });
+  " 2>/dev/null)
+  if [ "$pid" = "busy" ]; then
+    warn "端口 $port 被占用，尝试清理..."
+    # 用 lsof 找 PID（兼容绝对路径）
+    _lsof=$(command -v lsof || echo /usr/sbin/lsof)
+    _pids=$($_lsof -ti tcp:$port 2>/dev/null || true)
+    if [ -n "$_pids" ]; then
+      echo "$_pids" | xargs kill -9 2>/dev/null || true
+      info "端口 $port 已释放"
+    else
+      warn "无法自动释放端口 $port，请手动运行: lsof -ti tcp:$port | xargs kill -9"
+    fi
   fi
 done
 

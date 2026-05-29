@@ -86,25 +86,19 @@ if ! npm --prefix "$WEB_DIR" exec -- vite --version >/dev/null 2>&1; then
 fi
 
 # ── 4. 清理残留进程（防止端口被上次未退出的 node 占用）─────────────────────
+# 先按进程名杀 tsx / vite（tsx 有内部锁，必须先杀进程再释放端口）
+for _pattern in "tsx watch" "vite"; do
+  pkill -f "$_pattern" 2>/dev/null || true
+done
+sleep 1   # 等进程完全退出
+
+# 再按端口补扫（兜底）
+_lsof=$(command -v lsof || echo /usr/sbin/lsof)
 for port in 5173 5174; do
-  # 用 node 找占用端口的 PID（跨平台，不依赖 lsof 路径）
-  pid=$(node -e "
-    const net = require('net');
-    const s = net.createServer();
-    s.listen($port, '127.0.0.1', () => { s.close(); process.stdout.write('free'); });
-    s.on('error', () => { process.stdout.write('busy'); });
-  " 2>/dev/null)
-  if [ "$pid" = "busy" ]; then
-    warn "端口 $port 被占用，尝试清理..."
-    # 用 lsof 找 PID（兼容绝对路径）
-    _lsof=$(command -v lsof || echo /usr/sbin/lsof)
-    _pids=$($_lsof -ti tcp:$port 2>/dev/null || true)
-    if [ -n "$_pids" ]; then
-      echo "$_pids" | xargs kill -9 2>/dev/null || true
-      info "端口 $port 已释放"
-    else
-      warn "无法自动释放端口 $port，请手动运行: lsof -ti tcp:$port | xargs kill -9"
-    fi
+  _pids=$($_lsof -ti tcp:$port 2>/dev/null || true)
+  if [ -n "$_pids" ]; then
+    warn "端口 $port 仍被占用，强制释放..."
+    echo "$_pids" | xargs kill -9 2>/dev/null || true
   fi
 done
 

@@ -93,17 +93,25 @@ echo ""
 echo "  按 Ctrl+C 退出"
 echo ""
 
-# 延迟 4 秒后自动打开浏览器（等待前端 vite dev server 就绪）
+# 轮询前端端口就绪后再打开浏览器（最多等 60 秒，每秒探测一次）
 open_browser() {
-  sleep 4
   URL="http://127.0.0.1:5173"
-  if command -v open >/dev/null 2>&1; then
-    open "$URL"                  # macOS
-  elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$URL"              # Linux
-  elif command -v start >/dev/null 2>&1; then
-    start "$URL"                 # Git Bash on Windows（fallback）
-  fi
+  for i in $(seq 1 60); do
+    # 用 node 探测 TCP 端口，跨平台无需 nc/curl
+    if node -e "
+      const net = require('net');
+      const c = net.connect(5173, '127.0.0.1', () => { c.destroy(); process.exit(0); });
+      c.on('error', () => process.exit(1));
+    " 2>/dev/null; then
+      if command -v open >/dev/null 2>&1; then
+        open "$URL"          # macOS
+      elif command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$URL"      # Linux
+      fi
+      return
+    fi
+    sleep 1
+  done
 }
 open_browser &
 

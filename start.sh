@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 # LogPilot 一键启动脚本（Linux / macOS / Git Bash on Windows）
 # 零配置：全新 clone 后直接运行即可
-set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WEB_DIR="$SCRIPT_DIR/logpilot-web"
@@ -74,6 +73,20 @@ echo "  后端: http://127.0.0.1:5174"
 echo ""
 echo "  按 Ctrl+C 退出"
 echo ""
+
+# 延迟 4 秒后自动打开浏览器（等待前端 vite dev server 就绪）
+open_browser() {
+  sleep 4
+  URL="http://127.0.0.1:5173"
+  if command -v open >/dev/null 2>&1; then
+    open "$URL"                  # macOS
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL"              # Linux
+  elif command -v start >/dev/null 2>&1; then
+    start "$URL"                 # Git Bash on Windows（fallback）
+  fi
+}
+open_browser &
 
 cd "$WEB_DIR"
 npm run dev

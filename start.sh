@@ -11,6 +11,16 @@ info()  { printf "${GREEN}[LogPilot]${NC} %s\n" "$1"; }
 warn()  { printf "${YELLOW}[LogPilot]${NC} %s\n" "$1"; }
 error() { printf "${RED}[LogPilot]${NC} %s\n" "$1"; }
 
+# ── 0. 补全 PATH（macOS 双击时不继承 shell PATH，nvm/fnm/brew node 会消失）──
+for _d in \
+  "/usr/local/bin" \
+  "/opt/homebrew/bin" \
+  "$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node/" 2>/dev/null | sort -V | tail -1)/bin" \
+  "$HOME/.fnm/node-versions/$(ls "$HOME/.fnm/node-versions/" 2>/dev/null | sort -V | tail -1)/installation/bin" \
+  "$HOME/.local/bin"; do
+  [ -d "$_d" ] && export PATH="$_d:$PATH"
+done
+
 # ── 1. 检查 Node.js ──────────────────────────────────────────────────────────
 if ! command -v node >/dev/null 2>&1; then
   error "未检测到 Node.js，请先安装 Node.js >= 18"

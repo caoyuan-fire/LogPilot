@@ -7,6 +7,10 @@ input-data-sample/
 # 根目录 node_modules（若有）
 node_modules/
 
+# package-lock.json 含平台相关原生包信息，跨平台会导致 optional dep 漏装
+# 各平台 clone 后自行 npm install 生成本地 lockfile
+logpilot-web/package-lock.json
+
 # 环境变量（含 API key，绝不入库）
 .env.local
 .env.*.local

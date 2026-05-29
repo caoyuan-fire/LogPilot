@@ -525,17 +525,17 @@ function addDarkFooter(slide, pageNo, total) {
 
   const rules = [
     {
-      tag: 'R3', title: '不下根因结论',
+      tag: '01', title: '不下根因结论',
       desc: 'AI 输出只能区分"事实 / 假设 / 缺失信息"。系统事件 source 强制标 system:<tag>，绝不无证据归因到目标 App。',
       ex: '✗  AI 说："根因是 com.demo.musicapp 内存泄漏"\n✓  AI 说："事实：5 次 Network timeout / 假设：网络栈问题 / 待查：底层无线日志"',
     },
     {
-      tag: 'R6', title: '动态 Tag 发现',
+      tag: '02', title: '动态 Tag 发现',
       desc: '不维护任何业务 Tag 白名单。Tag 是日志数据驱动的，新业务模块上线无需改一行代码即可分析。',
       ex: '维护成本：0\n覆盖范围：随日志输入自动扩展',
     },
     {
-      tag: 'R7', title: '可解释 / 证据可追溯',
+      tag: '03', title: '可解释 / 证据可追溯',
       desc: '每条 Tag 统计有 first_seen / last_seen；时间线每条带 line_no；压缩后的重复事件保留首样例行号 — 永远能跳回原日志。',
       ex: '点击时间线任意一条 → 可定位到具体行号\n压缩×5 的事件 → 仍能看到首个证据样例',
     },

@@ -56,13 +56,23 @@ if needs_install; then
     req.on('error',()=>process.exit(1));
     req.on('timeout',()=>process.exit(1));
   " 2>/dev/null; then
-    npm --prefix "$WEB_DIR" install --registry https://registry.npmmirror.com --silent
+    NPM_REGISTRY="--registry https://registry.npmmirror.com"
+    npm --prefix "$WEB_DIR" install $NPM_REGISTRY --silent
   else
+    NPM_REGISTRY=""
     npm --prefix "$WEB_DIR" install --silent
   fi
   info "依赖安装完成 ✓"
 else
   info "依赖已是最新，跳过安装"
+fi
+
+# 验证原生绑定完整性（跨平台 clone 后 npm optional dep bug）
+if ! npm --prefix "$WEB_DIR" exec -- vite --version >/dev/null 2>&1; then
+  warn "检测到原生依赖缺失（跨平台 clone 已知问题），自动修复中..."
+  rm -rf "$MODULES" "$WEB_DIR/package-lock.json"
+  npm --prefix "$WEB_DIR" install $NPM_REGISTRY --silent
+  info "原生依赖修复完成 ✓"
 fi
 
 # ── 4. 启动 ─────────────────────────────────────────────────────────────────

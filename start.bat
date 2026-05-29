@@ -46,16 +46,17 @@ if not exist "%WEB_DIR%\.env.local" (
 )
 
 :: ── 3. 安装 npm 依赖 ─────────────────────────────────────────────────────────
+:: 检测国内镜像可达性，决定 registry
+set "NPM_REGISTRY="
+node -e "const h=require('https');const r=h.get('https://registry.npmmirror.com',{timeout:3000},()=>process.exit(0));r.on('error',()=>process.exit(1));r.on('timeout',()=>process.exit(1));" 2>nul
+if !errorlevel! == 0 (
+    set "NPM_REGISTRY=--registry https://registry.npmmirror.com"
+)
+
 if not exist "%WEB_DIR%\node_modules" (
     echo [提示] 安装依赖，首次运行需要约 30 秒...
-    :: 检测国内镜像可达性，优先使用
-    node -e "const h=require('https');const r=h.get('https://registry.npmmirror.com',{timeout:3000},()=>process.exit(0));r.on('error',()=>process.exit(1));r.on('timeout',()=>process.exit(1));" 2>nul
-    if !errorlevel! == 0 (
-        echo [提示] 使用国内镜像加速...
-        call npm --prefix "%WEB_DIR%" install --registry https://registry.npmmirror.com --silent
-    ) else (
-        call npm --prefix "%WEB_DIR%" install --silent
-    )
+    if defined NPM_REGISTRY echo [提示] 使用国内镜像加速...
+    call npm --prefix "%WEB_DIR%" install %NPM_REGISTRY% --silent
     if errorlevel 1 (
         echo [错误] 依赖安装失败，请检查网络后重试
         pause
@@ -64,6 +65,21 @@ if not exist "%WEB_DIR%\node_modules" (
     echo [OK] 依赖安装完成
 ) else (
     echo [OK] 依赖已就绪，跳过安装
+)
+
+:: ── 3b. 验证原生绑定完整性（跨平台 clone 后 npm optional dep bug 检测）────────
+call npm --prefix "%WEB_DIR%" exec -- vite --version >nul 2>&1
+if errorlevel 1 (
+    echo [提示] 检测到原生依赖缺失（跨平台 clone 已知问题），正在自动修复...
+    rmdir /s /q "%WEB_DIR%\node_modules" 2>nul
+    del /f /q "%WEB_DIR%\package-lock.json" 2>nul
+    call npm --prefix "%WEB_DIR%" install %NPM_REGISTRY% --silent
+    if errorlevel 1 (
+        echo [错误] 修复安装失败，请检查网络后重试
+        pause
+        exit /b 1
+    )
+    echo [OK] 原生依赖修复完成
 )
 
 :: ── 4. 启动 ─────────────────────────────────────────────────────────────────

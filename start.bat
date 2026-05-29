@@ -76,8 +76,13 @@ echo  稍等几秒后浏览器会自动打开，也可手动访问上方地址
 echo  关闭此窗口即可停止服务
 echo.
 
-:: 延迟 3 秒后自动打开浏览器
-start "" cmd /c "timeout /t 4 /nobreak >nul && start http://127.0.0.1:5173"
+:: 轮询前端端口就绪后再打开浏览器（最多等 60 秒，每秒探测一次）
+start "" powershell -NonInteractive -WindowStyle Hidden -Command ^
+  "$url='http://127.0.0.1:5173';" ^
+  "for($i=0;$i -lt 60;$i++){" ^
+  "  try{$r=[System.Net.Sockets.TcpClient]::new('127.0.0.1',5173);$r.Close();Start-Process $url;exit 0}catch{}" ^
+  "  Start-Sleep -Seconds 1" ^
+  "}"
 
 cd /d "%WEB_DIR%"
 call npm run dev
